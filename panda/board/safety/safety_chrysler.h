@@ -196,6 +196,15 @@ static int chrysler_rx_hook(CANPacket_t *to_push) {
     // enter controls on rising edge of ACC, exit controls on ACC off
     const int das_3_bus = (chrysler_platform == CHRYSLER_PACIFICA) ? 0 : 2;
     if ((bus == das_3_bus) && (addr == chrysler_addrs->DAS_3)) {
+      // PFEIFER - AOL {{
+      bool cruise_available = GET_BIT(to_push, 20U) == 1U;
+      if(!cruise_available) {
+        lateral_controls_allowed = 0;
+      }
+      if(alternative_experience & ALT_EXP_AOL_ENABLE_ON_MAIN) {
+        lateral_controls_allowed = cruise_available;
+      }
+      // }} PFEIFER - AOL
       bool cruise_engaged = GET_BIT(to_push, 21U) == 1U;
       pcm_cruise_check(cruise_engaged);
     }
@@ -247,7 +256,7 @@ static int chrysler_tx_hook(CANPacket_t *to_send) {
 
     const SteeringLimits limits = (chrysler_platform == CHRYSLER_PACIFICA) ? CHRYSLER_STEERING_LIMITS :
                                   (chrysler_platform == CHRYSLER_RAM_DT) ? CHRYSLER_RAM_DT_STEERING_LIMITS : CHRYSLER_RAM_HD_STEERING_LIMITS;
-                                
+
     bool steer_req = (chrysler_platform == CHRYSLER_PACIFICA) ? (GET_BIT(to_send, 4U) != 0U) : ((GET_BYTE(to_send, 3) & 0x7U) == 2U);
     if (steer_torque_cmd_checks(desired_torque, steer_req, limits)) {
       tx = 0;
